@@ -1,4 +1,4 @@
-module Packet exposing (ControlPacket(..), decode)
+module Packet exposing (ConnAckReturnCode(..), Packet(..), decode, packetDecoder)
 
 import Bitwise
 import Bytes exposing (Bytes)
@@ -7,49 +7,119 @@ import Bytes.Encode as Encode
 import Debug
 
 
-type ControlPacket
-    = RESERVED
-    | CONNECT
-    | CONNACK
-    | PUBLISH
-    | PUBACK
-    | PUBREC
-    | PUBREL
-    | PUBCOMP
-    | SUBSCRIBE
-    | SUBACK
-    | UNSUBSCRIBE
-    | UNSUBACK
-    | PINGREQ
-    | PINGRESP
-    | DISCONNECT
+type Packet
+    = Connect
+    | ConnAck { sessionPresent : Bool, returnCode : ConnAckReturnCode }
+    | Publish
+    | PubAck
+    | PubRec
+    | PubRel
+    | PubComp
+    | Subscribe
+    | Suback
+    | UnSubscribe
+    | UnSubAck
+    | PingReq
+    | PingResp
+    | Disconnect
 
 
-headerToPacket : Int -> Int -> ControlPacket
-headerToPacket header length =
+type ConnAckReturnCode
+    = Accepted
+    | UnnacpetableProtocolVersion
+    | IdentifierRejected
+    | ServerUnavailable
+    | BadUsernameOrPassword
+    | NotAuthorized
+
+
+decode : Bytes -> Maybe Packet
+decode bytes =
+    Decode.decode packetDecoder bytes
+
+
+packetDecoder : Decode.Decoder Packet
+packetDecoder =
+    decodeTwoBytes
+        |> Decode.andThen decodeFixedHeader
+
+
+decodeTwoBytes : Decode.Decoder ( Int, Int )
+decodeTwoBytes =
+    Decode.map2 Tuple.pair Decode.unsignedInt8 Decode.unsignedInt8
+
+
+decodeFixedHeader : ( Int, Int ) -> Decode.Decoder Packet
+decodeFixedHeader ( header, length ) =
     let
         fixedHeaderType =
-            Bitwise.shiftRightZfBy 4 header
+            Bitwise.shiftRightBy 4 header
 
         fixedHeaderFlags =
             Bitwise.and 15 header
     in
-    case ( fixedHeaderType, fixedHeaderFlags ) of
-        ( 0, _ ) ->
-            RESERVED
+    case ( fixedHeaderType, fixedHeaderFlags, length ) of
+        ( 1, 0, _ ) ->
+            connectDecoder
 
-        ( 1, 0 ) ->
-            CONNECT
+        ( 2, 0, 2 ) ->
+            connAckDecoder
 
         _ ->
-            RESERVED
+            Decode.fail
 
 
-packetDecoder : Decode.Decoder ControlPacket
-packetDecoder =
-    Decode.map2 headerToPacket Decode.unsignedInt8 Decode.unsignedInt8
+connectDecoder : Decode.Decoder Packet
+connectDecoder =
+    Decode.succeed Connect
 
 
-decode : Bytes -> Maybe ControlPacket
-decode bytes =
-    Decode.decode packetDecoder bytes
+connAckDecoder : Decode.Decoder Packet
+connAckDecoder =
+    let
+        decodeSessionPresesent =
+            Decode.unsignedInt8
+                |> Decode.andThen
+                    (\flags ->
+                        case flags of
+                            0 ->
+                                Decode.succeed False
+
+                            1 ->
+                                Decode.succeed True
+
+                            _ ->
+                                Decode.fail
+                    )
+
+        decodeReturnCode =
+            Decode.unsignedInt8
+                |> Decode.andThen
+                    (\returnCode ->
+                        case returnCode of
+                            0 ->
+                                Decode.succeed Accepted
+
+                            1 ->
+                                Decode.succeed UnnacpetableProtocolVersion
+
+                            2 ->
+                                Decode.succeed IdentifierRejected
+
+                            3 ->
+                                Decode.succeed ServerUnavailable
+
+                            4 ->
+                                Decode.succeed BadUsernameOrPassword
+
+                            5 ->
+                                Decode.succeed NotAuthorized
+
+                            _ ->
+                                Decode.fail
+                    )
+
+        builder sessionPresent returnCode =
+            ConnAck { sessionPresent = sessionPresent, returnCode = returnCode }
+    in
+    Decode.map2 builder decodeSessionPresesent decodeReturnCode

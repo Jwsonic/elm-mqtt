@@ -137,29 +137,27 @@ connAckDecoder =
 publishDecoder : Int -> Int -> Decode.Decoder Packet
 publishDecoder flags length =
     let
-        dup =
-            Bitwise.and 8 flags == 8
+        decodeDup =
+            Decode.succeed <| Bitwise.and 8 flags == 8
 
-        retain =
-            Bitwise.and 1 flags == 1
+        decodeRetain =
+            Decode.succeed <| Bitwise.and 1 flags == 1
 
-        qos =
+        decodeQos =
             case Bitwise.shiftRightBy 1 flags |> Bitwise.and 3 of
                 0 ->
-                    Just Zero
+                    Decode.succeed Zero
 
                 1 ->
-                    Just One
+                    Decode.succeed One
 
                 2 ->
-                    Just Two
+                    Decode.succeed Two
 
                 _ ->
-                    Nothing
-    in
-    case qos of
-        Just q ->
-            Decode.succeed <| Publish { dup = dup, qos = q, retain = retain }
+                    Decode.fail
 
-        _ ->
-            Decode.fail
+        mapper dup qos retain =
+            Publish { dup = dup, qos = qos, retain = retain }
+    in
+    Decode.map3 mapper decodeDup decodeQos decodeRetain

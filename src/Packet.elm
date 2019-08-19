@@ -1,4 +1,4 @@
-module Packet exposing (ConnAckReturnCode(..), Packet(..), decode, packetDecoder)
+module Packet exposing (ConnAckReturnCode(..), Packet(..), QoS(..), decode, packetDecoder)
 
 import Bitwise
 import Bytes exposing (Bytes)
@@ -7,10 +7,16 @@ import Bytes.Encode as Encode
 import Debug
 
 
+type QoS
+    = Zero
+    | One
+    | Two
+
+
 type Packet
     = Connect
     | ConnAck { sessionPresent : Bool, returnCode : ConnAckReturnCode }
-    | Publish
+    | Publish { dup : Bool, qos : QoS, retain : Bool }
     | PubAck
     | PubRec
     | PubRel
@@ -52,18 +58,21 @@ decodeTwoBytes =
 decodeFixedHeader : ( Int, Int ) -> Decode.Decoder Packet
 decodeFixedHeader ( header, length ) =
     let
-        fixedHeaderType =
+        type_ =
             Bitwise.shiftRightBy 4 header
 
-        fixedHeaderFlags =
+        flags =
             Bitwise.and 15 header
     in
-    case ( fixedHeaderType, fixedHeaderFlags, length ) of
+    case ( type_, flags, length ) of
         ( 1, 0, _ ) ->
             connectDecoder
 
         ( 2, 0, 2 ) ->
             connAckDecoder
+
+        ( 3, _, _ ) ->
+            publishDecoder flags length
 
         _ ->
             Decode.fail
@@ -119,7 +128,38 @@ connAckDecoder =
                                 Decode.fail
                     )
 
-        builder sessionPresent returnCode =
+        mapper sessionPresent returnCode =
             ConnAck { sessionPresent = sessionPresent, returnCode = returnCode }
     in
-    Decode.map2 builder decodeSessionPresesent decodeReturnCode
+    Decode.map2 mapper decodeSessionPresesent decodeReturnCode
+
+
+publishDecoder : Int -> Int -> Decode.Decoder Packet
+publishDecoder flags length =
+    let
+        dup =
+            Bitwise.and 8 flags == 8
+
+        retain =
+            Bitwise.and 1 flags == 1
+
+        qos =
+            case Bitwise.shiftRightBy 1 flags |> Bitwise.and 3 of
+                0 ->
+                    Just Zero
+
+                1 ->
+                    Just One
+
+                2 ->
+                    Just Two
+
+                _ ->
+                    Nothing
+    in
+    case qos of
+        Just q ->
+            Decode.succeed <| Publish { dup = dup, qos = q, retain = retain }
+
+        _ ->
+            Decode.fail

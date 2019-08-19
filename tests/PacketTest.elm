@@ -12,6 +12,7 @@ suite =
     describe "parser"
         [ describe "connect" connectTests
         , describe "connAck" connAckTests
+        , describe "publish" publishTests
         ]
 
 
@@ -32,4 +33,12 @@ connAckTests =
         \_ ->
             Expect.equal (Just <| ConnAck { sessionPresent = False, returnCode = Accepted })
                 (decode connAckWithReturnZero)
+    ]
+
+
+publishTests =
+    [ test "It parses return of zero" <|
+        \_ ->
+            Expect.equal (Just <| Publish { dup = False, qos = Zero, retain = False })
+                (decode publishMinimal)
     ]

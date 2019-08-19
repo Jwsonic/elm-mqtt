@@ -1,4 +1,4 @@
-module Fixtures exposing (connAckWithReturnZero, defaultConnect, emptyWillPayload, intsToBytes)
+module Fixtures exposing (connAckWithReturnZero, defaultConnect, emptyWillPayload, intsToBytes, publishMinimal)
 
 import Bytes exposing (Bytes)
 import Bytes.Encode as Encode
@@ -102,4 +102,21 @@ connAckWithReturnZero =
         , 2
         , 0
         , 0
+        ]
+
+
+publishMinimal =
+    intsToBytes
+        [ 48
+        , 10 -- Header
+        , 0
+        , 4 -- Topic length
+        , 116
+        , 101
+        , 115
+        , 116 -- Topic (test)
+        , 116
+        , 101
+        , 115
+        , 116 -- Payload (test)
         ]

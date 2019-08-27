@@ -1,31 +1,20 @@
-module PacketTest exposing (suite)
+module ParserTest exposing (suite)
 
 import Expect exposing (Expectation)
 import Fixtures exposing (..)
-import Fuzz exposing (Fuzzer, int, list, string)
+import Fuzz exposing (Fuzzer, intRange, list, string)
 import Packet exposing (..)
+import Parser exposing (..)
 import Test exposing (..)
 
 
 suite : Test
 suite =
     describe "parser"
-        [ describe "connect" connectTests
-        , describe "connAck" connAckTests
+        [ describe "connAck" connAckTests
         , describe "publish" publishTests
+        , describe "pubAck" pubAckTests
         ]
-
-
-connectTests =
-    [ test "It parses default connect" <|
-        \_ ->
-            Expect.equal (Just Connect)
-                (decode defaultConnect)
-    , test "It parses empty will payload" <|
-        \_ ->
-            Expect.equal (Just Connect)
-                (decode emptyWillPayload)
-    ]
 
 
 connAckTests =
@@ -37,8 +26,16 @@ connAckTests =
 
 
 publishTests =
-    [ test "It parses return of zero" <|
+    [ test "It parses the minimal publish" <|
         \_ ->
             Expect.equal (Just <| Publish { dup = False, qos = Zero, retain = False })
                 (decode publishMinimal)
+    ]
+
+
+pubAckTests =
+    [ fuzz (intRange 0 65535) "It parses a puback" <|
+        \fuzzInt ->
+            Expect.equal (Just <| PubAck { packetId = fuzzInt })
+                (decode <| pubAckBuilder fuzzInt)
     ]

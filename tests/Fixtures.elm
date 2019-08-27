@@ -1,7 +1,8 @@
-module Fixtures exposing (connAckWithReturnZero, defaultConnect, emptyWillPayload, intsToBytes, publishMinimal)
+module Fixtures exposing (connAckWithReturnZero, defaultConnect, emptyWillPayload, intsToBytes, pubAckBuilder, publishMinimal)
 
 import Bytes exposing (Bytes)
 import Bytes.Encode as Encode
+import Debug
 
 
 intsToBytes : List Int -> Bytes
@@ -120,3 +121,8 @@ publishMinimal =
         , 115
         , 116 -- Payload (test)
         ]
+
+
+pubAckBuilder int =
+    Encode.encode <|
+        Encode.sequence [ Encode.unsignedInt8 64, Encode.unsignedInt8 2, Encode.unsignedInt16 Bytes.BE int ]

@@ -1,4 +1,4 @@
-module Parser exposing (connAckDecoder, connectDecoder, decode, decodeFixedHeader, decodeTwoBytes, packetDecoder, publishDecoder)
+module Parser exposing (decode)
 
 import Bitwise
 import Bytes exposing (Bytes)
@@ -45,6 +45,15 @@ decodeFixedHeader ( header, length ) =
 
         ( 4, 0, 2 ) ->
             pubAckDecoder
+
+        ( 5, 0, 2 ) ->
+            pubRecDecoder
+
+        ( 6, 2, 2 ) ->
+            pubRelDecoder
+
+        ( 7, 0, 2 ) ->
+            pubCompDecoder
 
         _ ->
             Decode.fail
@@ -137,8 +146,19 @@ publishDecoder flags length =
 
 pubAckDecoder : Decode.Decoder Packet
 pubAckDecoder =
-    let
-        mapper packetId =
-            PubAck { packetId = packetId }
-    in
-    Decode.map mapper <| Decode.unsignedInt16 Bytes.BE
+    Decode.map PubAck <| Decode.unsignedInt16 Bytes.BE
+
+
+pubRecDecoder : Decode.Decoder Packet
+pubRecDecoder =
+    Decode.map PubRec <| Decode.unsignedInt16 Bytes.BE
+
+
+pubRelDecoder : Decode.Decoder Packet
+pubRelDecoder =
+    Decode.map PubRel <| Decode.unsignedInt16 Bytes.BE
+
+
+pubCompDecoder : Decode.Decoder Packet
+pubCompDecoder =
+    Decode.map PubComp <| Decode.unsignedInt16 Bytes.BE

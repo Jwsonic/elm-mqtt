@@ -6,10 +6,10 @@ module Packet exposing (ConnAckReturnCode(..), Packet(..), QoS(..))
 type Packet
     = ConnAck { sessionPresent : Bool, returnCode : ConnAckReturnCode }
     | Publish { dup : Bool, qos : QoS, retain : Bool }
-    | PubAck { packetId : Int }
-    | PubRec
-    | PubRel
-    | PubComp
+    | PubAck Int
+    | PubRec Int
+    | PubRel Int
+    | PubComp Int
     | Suback
     | UnSubAck
     | PingResp

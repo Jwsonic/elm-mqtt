@@ -1,4 +1,14 @@
-module Fixtures exposing (connAckWithReturnZero, defaultConnect, emptyWillPayload, intsToBytes, pubAckBuilder, publishMinimal)
+module Fixtures exposing
+    ( connAckWithReturnZero
+    , defaultConnect
+    , emptyWillPayload
+    , intsToBytes
+    , pubAckBuilder
+    , pubCompBuilder
+    , pubRecBuilder
+    , pubRelBuilder
+    , publishMinimal
+    )
 
 import Bytes exposing (Bytes)
 import Bytes.Encode as Encode
@@ -123,6 +133,21 @@ publishMinimal =
         ]
 
 
-pubAckBuilder int =
+pubAckBuilder id =
     Encode.encode <|
-        Encode.sequence [ Encode.unsignedInt8 64, Encode.unsignedInt8 2, Encode.unsignedInt16 Bytes.BE int ]
+        Encode.sequence [ Encode.unsignedInt8 64, Encode.unsignedInt8 2, Encode.unsignedInt16 Bytes.BE id ]
+
+
+pubRecBuilder id =
+    Encode.encode <|
+        Encode.sequence [ Encode.unsignedInt8 80, Encode.unsignedInt8 2, Encode.unsignedInt16 Bytes.BE id ]
+
+
+pubRelBuilder id =
+    Encode.encode <|
+        Encode.sequence [ Encode.unsignedInt8 98, Encode.unsignedInt8 2, Encode.unsignedInt16 Bytes.BE id ]
+
+
+pubCompBuilder id =
+    Encode.encode <|
+        Encode.sequence [ Encode.unsignedInt8 112, Encode.unsignedInt8 2, Encode.unsignedInt16 Bytes.BE id ]
